@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:pages": "vite build --outDir docs --emptyOutDir && cp docs/assets/index.js docs/assets/index-DN4BowaK.js && cp docs/assets/index.css docs/assets/index-CNpBMQYb.css"
+    "build:pages": "vite build --outDir docs --emptyOutDir && printf \"import './index.js'\\n\" > docs/assets/index-DN4BowaK.js && cp docs/assets/index.css docs/assets/index-CNpBMQYb.css"
   },
   "keywords": [],
   "author": "",
