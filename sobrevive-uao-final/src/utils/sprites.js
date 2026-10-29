@@ -117,15 +117,111 @@ export function drawCampusVignette(ctx, variant = 'base', frame = 0) {
   }
   if (variant === 'gas') {
     for (let i = 0; i < 26; i++) {
-      const x = Math.floor(((r() * W + frame) % W))
+      const x = Math.floor((r() * W + frame) % W)
       const y = 14 + Math.floor(r() * 18)
       p(x, y, 'rgba(150,255,120,.45)', 3, 2)
     }
   }
   if (variant === 'quake') {
-    const crack = [[14, 12], [15, 13], [15, 14], [16, 15], [15, 16], [16, 17], [33, 12], [32, 13], [33, 14], [32, 15], [31, 16]]
+    const crack = [
+      [14, 12],
+      [15, 13],
+      [15, 14],
+      [16, 15],
+      [15, 16],
+      [16, 17],
+      [33, 12],
+      [32, 13],
+      [33, 14],
+      [32, 15],
+      [31, 16],
+    ]
     crack.forEach(([x, y]) => p(x + shake, y, '#1a1220'))
     for (let i = 0; i < 10; i++) p(Math.floor(r() * W), 4 + Math.floor(r() * 26), '#c9b79c', 1, 1)
+  }
+}
+
+/**
+ * Viñeta con la foto real del campus (ver campusSnapshot.js) y la emergencia dibujada encima.
+ * photo: canvas cuadrado; variant: 'base' | 'quake' | 'fire' | 'gas'; frame anima llamas/humo/gas.
+ * Los efectos van en bloques de 2 px para que se lean igual de "pixel" que la foto.
+ */
+export function drawUaoVignette(ctx, photo, variant = 'base', frame = 0) {
+  const S = photo.width
+  const r = rng(11 + frame * 17)
+  const u = S / 96 // las posiciones están pensadas para 96 px (techo ≈ 39, base de la fachada ≈ 78)
+  const p = (x, y, c, w = 2, h = 2) => {
+    ctx.fillStyle = c
+    ctx.fillRect(Math.round(x * u), Math.round(y * u), Math.ceil(w * u), Math.ceil(h * u))
+  }
+  const shake =
+    variant === 'quake'
+      ? [
+          [-2, 0],
+          [2, 1],
+          [-1, -1],
+          [1, 0],
+        ][frame % 4]
+      : [0, 0]
+  ctx.clearRect(0, 0, S, S)
+  ctx.globalCompositeOperation = 'source-over'
+  if (variant === 'quake') {
+    ctx.fillStyle = '#5c524a' // lo que queda a la vista al sacudirse la foto
+    ctx.fillRect(0, 0, S, S)
+  }
+  ctx.drawImage(photo, shake[0] * u, shake[1] * u)
+  if (variant === 'base') return
+
+  // Tinte de la emergencia sobre toda la foto
+  const tint = { fire: 'rgb(255 120 60 / .9)', gas: 'rgb(150 230 120 / .85)', quake: 'rgb(210 180 140 / .9)' }[variant]
+  ctx.globalCompositeOperation = 'multiply'
+  ctx.fillStyle = tint
+  ctx.fillRect(0, 0, S, S)
+  ctx.globalCompositeOperation = 'source-over'
+
+  if (variant === 'fire') {
+    // Ventanas encendidas
+    for (let i = 0; i < 18; i++) p(8 + r() * 80, 44 + r() * 22, r() > 0.5 ? '#ffb347' : '#ffdd55')
+    // Humo que sube desde el fuego, por delante de la fachada, hasta el cielo
+    for (let i = 0; i < 40; i++) {
+      const x = 4 + r() * 88
+      const y = (70 - ((r() * 70 + frame * 3) % 70)) | 0
+      p(x, y, `rgb(${(40 + r() * 30) | 0} 28 28 / ${0.3 + r() * 0.4})`, 4, 4)
+    }
+    // Llamas que salen del piso, frente al edificio: lenguas de distinta altura (amarillo abajo, rojo en la punta)
+    for (let x = 0; x < 96; x += 2) {
+      const wave = Math.max(0, Math.sin(x * 0.19 + frame * 0.9) + Math.sin(x * 0.07 - frame * 0.4))
+      const h = Math.floor(4 + wave * 9 + r() * 6) * 2
+      for (let k = 0; k < h; k += 2) p(x, 92 - k, k < h * 0.4 ? '#ffdd55' : k < h * 0.75 ? '#ff8a2a' : '#e8401c')
+    }
+  }
+
+  if (variant === 'gas') {
+    // Nubes de gas que se desplazan por el campus
+    for (let i = 0; i < 26; i++) {
+      const x = ((r() * 120 + frame * 2) % 120) - 12
+      const y = 46 + r() * 46
+      p(x, y, `rgb(150 255 120 / ${0.25 + r() * 0.3})`, 8, 4)
+    }
+    for (let i = 0; i < 14; i++) p(r() * 96, 30 + r() * 60, 'rgb(200 255 170 / .6)')
+  }
+
+  if (variant === 'quake') {
+    // Grietas en la fachada
+    const cracks = [
+      [22, 44, [0, 1, 1, 0, -1, 0, 1]],
+      [72, 44, [0, -1, 0, 1, 1, 0, -1]],
+    ]
+    cracks.forEach(([x0, y0, steps]) => {
+      let x = x0
+      steps.forEach((dx, k) => {
+        x += dx * 2
+        p(x + shake[0], y0 + shake[1] + k * 3, '#1a1220', 2, 3)
+      })
+    })
+    // Escombros cayendo y polvo en el suelo
+    for (let i = 0; i < 16; i++) p(6 + r() * 84, (38 + ((r() * 40 + frame * 4) % 40)) | 0, '#8a7a68')
+    for (let i = 0; i < 20; i++) p(r() * 96, 80 + r() * 14, `rgb(201 183 156 / ${0.4 + r() * 0.4})`, 6, 3)
   }
 }
 

@@ -27,7 +27,9 @@ export function useSoundDirector() {
       if (s.screen !== 'simulator') return
       const hazard = s.selectedEmergency && EMERGENCIES[s.selectedEmergency].hazard
 
-      if (s.runId !== prev.runId || (s.phase === 'intro' && prev.phase !== 'intro')) sound.ambient(hazard)
+      // (el terremoto de ruta tranquila suena solo cuando empieza a temblar)
+      if (s.runId !== prev.runId || (s.phase === 'intro' && prev.phase !== 'intro')) sound.ambient(s.tremor ? hazard : null)
+      if (s.tremor && !prev.tremor) sound.ambient(hazard)
       // Terremoto: la tierra suena y caen cosas hasta que el personaje sale de los sótanos
       if (hazard === 'quake' && s.isOutside && !prev.isOutside) sound.endQuake()
 

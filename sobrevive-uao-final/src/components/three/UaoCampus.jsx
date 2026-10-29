@@ -9,6 +9,7 @@ import brickUrl from '../../assets/textures/ladrillo.png'
 import concreteUrl from '../../assets/textures/concreto.png'
 import { makePixelTexture, pixelateTexture } from '../../utils/pixelTextures'
 import CampusGround from './CampusGround'
+import CampusSurroundings from './CampusSurroundings'
 import { PLATFORM_CUT_X } from '../../data/campusLayout'
 import CourtyardDetails, { COURTYARD_WINDOWS } from './CourtyardDetails'
 import { LONG_BUILDING_WINDOWS } from './longBuildingWindows'
@@ -221,6 +222,8 @@ export default function UaoCampus({ frontView = false }) {
     <group>
       {/* Suelo pixel art: pasto, caminos, lago, rocas y vegetación (boceto del equipo) */}
       <CampusGround frontView={frontView} />
+      {/* Alrededores: calles, valla, árboles y pasto hasta el horizonte */}
+      <CampusSurroundings />
       {/* Patio del Edificio Principal: moldura del arco, ventanas, franjas grises y seto */}
       <CourtyardDetails />
       {/* Todas las ventanas del campus (3 llamadas de dibujo en total) */}

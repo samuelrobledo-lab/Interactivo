@@ -136,6 +136,11 @@ export function Smoke({ position, scale = 1, count = 28 }) {
   return <VoxelParticles position={position} count={count} area={[2 * scale, 0.6, 2 * scale]} colors={SMOKE} life={[2.2, 4]} speed={[0.25, 0.6]} drift={[0.35, 0, 0]} spread={0.25} size={[0.4 * scale, 0.8 * scale]} sizeMode="grow" opacity={0.6} />
 }
 
+/** Nube de gas densa y baja (fuga de gas: tocarla ahoga), más visible que GasCloud. */
+export function GasPuff({ position, scale = 1 }) {
+  return <VoxelParticles position={position} count={Math.round(22 * scale)} area={[1.3 * scale, 0.5, 1.3 * scale]} colors={GAS} life={[1.8, 3.2]} speed={[0.1, 0.35]} spread={0.35} size={[0.3 * scale, 0.7 * scale]} sizeMode="grow" opacity={0.42} />
+}
+
 export function GasCloud({ position, scale = 1, count = 30 }) {
   return <VoxelParticles position={position} count={count} area={[2.4 * scale, 0.8, 2.4 * scale]} colors={GAS} life={[2.5, 4.5]} speed={[0.05, 0.25]} spread={0.3} size={[0.45 * scale, 0.9 * scale]} sizeMode="grow" opacity={0.16} />
 }

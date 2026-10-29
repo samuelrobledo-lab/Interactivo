@@ -1,5 +1,8 @@
+/** Secciones de la portada, en orden: inicio → experiencia (comenzar) → mapa 3D. */
+export const SECTION = { intro: 0, start: 1, map: 2 }
+
 /**
- * Posición del scroll de la portada (0 intro · 1 mapa · 2 comenzar), compartida entre el DOM y la escena 3D.
+ * Posición del scroll de la portada (ver SECTION), compartida entre el DOM y la escena 3D.
  * Cambia en cada cuadro durante las transiciones, por eso vive fuera de React (sin re-renders):
  * la escena la lee en useFrame y se suscribe para redibujar solo cuando cambia.
  *

@@ -51,10 +51,11 @@ export default function CampusWindows({ specs }) {
         <meshLambertMaterial color={WINDOW_COLORS.frame} />
       </mesh>
       <mesh geometry={geo.glass}>
-        <meshLambertMaterial color={WINDOW_COLORS.glass} />
+        {/* vidrio y reflejo van a milímetros del marco: prioridad de profundidad para que no parpadeen de lejos */}
+        <meshLambertMaterial color={WINDOW_COLORS.glass} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
       <mesh geometry={geo.glint}>
-        <meshBasicMaterial color={WINDOW_COLORS.glint} toneMapped={false} />
+        <meshBasicMaterial color={WINDOW_COLORS.glint} toneMapped={false} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
       </mesh>
     </group>
   )

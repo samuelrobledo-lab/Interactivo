@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useGameStore } from '../store/useGameStore'
 import { EMERGENCIES, EMERGENCY_ORDER } from '../data/emergencies'
-import { CampusVignette, GlassPanel, IconButton, PixelButton, SoundToggle } from '../components/ui/primitives'
+import { GlassPanel, IconButton, PixelButton, SoundToggle, UaoVignette } from '../components/ui/primitives'
 
 /**
- * Selección de amenaza (wireframe 04): 3 imágenes circulares de la universidad.
+ * Selección de amenaza (wireframe 04): 3 imágenes circulares de la UAO (foto pixel del modelo 3D del campus).
  * Hover/focus → la misma imagen pero con su emergencia en pixel art.
  */
 export default function EmergencySelect() {
@@ -31,19 +31,23 @@ export default function EmergencySelect() {
                 <button
                   type="button"
                   aria-label={`Ver ${e.name}`}
-                  className="group relative size-40 cursor-pointer overflow-hidden rounded-full outline-none ring-4 ring-white/20 transition hover:ring-uao-red focus-visible:ring-signal-amber sm:size-44"
-                  style={active ? { boxShadow: `0 0 0 8px ${e.accent}55` } : undefined}
+                  className="group pixel-circle-lg size-40 cursor-pointer overflow-hidden outline-none transition [--pixel-ring:rgb(255_255_255/0.2)] hover:[--pixel-ring:var(--color-btn-red)] focus-visible:[--pixel-ring:var(--color-signal-amber)] sm:size-44"
+                  style={active ? { '--pixel-ring': e.accent } : undefined}
                   onMouseEnter={() => setHovered(id)}
                   onMouseLeave={() => setHovered(null)}
                   onFocus={() => setHovered(id)}
                   onBlur={() => setHovered(null)}
                   onClick={() => selectEmergency(id)}
                 >
-                  <CampusVignette variant={active ? e.hazard : 'base'} animate={active} className={`size-full ${active && e.hazard === 'quake' ? 'anim-shake' : ''}`} />
+                  <UaoVignette
+                    variant={active ? e.hazard : 'base'}
+                    animate={active}
+                    className={`size-full ${active && e.hazard === 'quake' ? 'anim-shake' : ''}`}
+                  />
                 </button>
-                <GlassPanel large={false} className="mt-5 w-full max-w-56 p-1">
+                <GlassPanel large={false} className="mt-5 w-48 p-1">
                   <PixelButton
-                    className="w-full"
+                    className="inline-flex h-16 w-full items-center justify-center leading-snug"
                     onClick={() => selectEmergency(id)}
                     onMouseEnter={() => setHovered(id)}
                     onMouseLeave={() => setHovered(null)}

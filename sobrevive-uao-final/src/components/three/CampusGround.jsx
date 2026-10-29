@@ -17,7 +17,7 @@ const PPU = 6 // píxeles de textura por unidad → tamaño del "pixel" del suel
 /* ------------------------------------------------------------------ */
 /* Paleta suave (poco saturada para no cansar la vista)                */
 /* ------------------------------------------------------------------ */
-const C = {
+export const C = {
   grass: [122, 145, 104],
   grassLight: [138, 160, 118],
   grassDark: [106, 128, 92],
@@ -38,7 +38,7 @@ const C = {
 /* ------------------------------------------------------------------ */
 /* Sprites de vegetación                                               */
 /* ------------------------------------------------------------------ */
-const PLANT_PALETTE = {
+export const PLANT_PALETTE = {
   k: '#3f5338', // contorno verde oscuro (más suave que el negro)
   L: '#a3c08a',
   G: '#7fa16b',
@@ -47,7 +47,7 @@ const PLANT_PALETTE = {
   P: '#d8aab3', // flores
 }
 
-const TREE = [
+export const TREE = [
   '.....kkkkkk.....',
   '...kkLLLLLLkk...',
   '..kLLLLGGLLLLk..',
@@ -66,7 +66,7 @@ const TREE = [
   '......kTTk......',
   '.....kTTTTk.....',
 ]
-const BUSH = [
+export const BUSH = [
   '...kkkkkk...',
   '.kkLLGGLLkk.',
   'kLLGGGGGGDDk',
@@ -309,7 +309,7 @@ function paintGround(plants) {
  * (como un THREE.Sprite), pero todas las plantas de un tipo se dibujan en una sola llamada.
  * La escala de la instancia da el ancho/alto del sprite; su base queda a nivel del suelo.
  */
-function billboardMaterial(map) {
+export function billboardMaterial(map) {
   const mat = new THREE.MeshBasicMaterial({ map, alphaTest: 0.5, toneMapped: false })
   mat.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader.replace(
@@ -323,7 +323,7 @@ function billboardMaterial(map) {
 }
 
 /** Plano unitario con el ancla abajo al centro (equivale a `center={[0.5, 0.05]}` de un sprite). */
-const BILLBOARD_GEO = new THREE.PlaneGeometry(1, 1).translate(0, 0.45, 0)
+export const BILLBOARD_GEO = new THREE.PlaneGeometry(1, 1).translate(0, 0.45, 0)
 
 /** Suelo pintado + vegetación instanciada; se calcula una sola vez por variante y se reutiliza entre escenas. */
 const groundCache = new Map()
@@ -347,7 +347,7 @@ function buildGround(frontView) {
   return result
 }
 
-function PlantInstances({ material, matrices }) {
+export function PlantInstances({ material, matrices }) {
   const mesh = useMemo(() => {
     const im = new THREE.InstancedMesh(BILLBOARD_GEO, material, matrices.length)
     matrices.forEach((mat, i) => im.setMatrixAt(i, mat))
@@ -363,14 +363,10 @@ export default function CampusGround({ frontView = false }) {
 
   return (
     <group>
+      {/* Un poco "hacia atrás" en profundidad: la plazoleta y bases del modelo (casi a la misma altura) siempre quedan encima */}
       <mesh rotation-x={-Math.PI / 2} position-y={-0.02}>
         <planeGeometry args={[EXTENT.x, EXTENT.z]} />
-        <meshLambertMaterial map={groundTexture} />
-      </mesh>
-      {/* Canto del terreno */}
-      <mesh position={[0, -0.5, 0]}>
-        <boxGeometry args={[EXTENT.x, 0.5, EXTENT.z]} />
-        <meshLambertMaterial color="#56684a" />
+        <meshLambertMaterial map={groundTexture} polygonOffset polygonOffsetFactor={2} polygonOffsetUnits={2} />
       </mesh>
       {/* Árboles, arbustos y rocas: una llamada de dibujo por tipo */}
       {instances.map(({ kind, material, matrices }) => (

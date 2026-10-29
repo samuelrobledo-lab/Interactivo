@@ -41,7 +41,10 @@ export function SimHUD() {
   const emergency = useEmergency()
   const { currentStep, phase, goHome } = useGameStore()
   if (!emergency) return null
-  const total = emergency.decisions.length
+  // las preguntas de una rama (p. ej. la 3.2) no cuentan en el progreso
+  const main = emergency.decisions.map((d, i) => [d, i]).filter(([d]) => !d.branch)
+  const total = main.length
+  const shown = main.filter(([, i]) => i <= currentStep).length
   return (
     <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 sm:p-4">
       <GlassPanel large={false} className="pointer-events-auto flex items-center gap-3 px-4 py-3">
@@ -50,8 +53,8 @@ export function SimHUD() {
           <p className="font-pixel text-[0.55rem] text-white/70 uppercase">Simulador</p>
           <p className="font-pixel text-[0.7rem] leading-relaxed">{emergency.name}</p>
         </div>
-        <ol className="ml-2 flex gap-1.5" aria-label={`Decisión ${Math.min(currentStep + 1, total)} de ${total}`}>
-          {emergency.decisions.map((d, i) => (
+        <ol className="ml-2 flex gap-1.5" aria-label={`Decisión ${Math.max(1, Math.min(shown, total))} de ${total}`}>
+          {main.map(([d, i]) => (
             <li
               key={d.id}
               className={`size-3 ${i < currentStep ? 'bg-signal-green' : i === currentStep && phase !== 'won' ? 'bg-signal-amber anim-blink' : 'bg-white/25'}`}
@@ -103,7 +106,8 @@ export function DecisionModal() {
     <Modal label="Pregunta" align="end" tone="clear">
       <GlassPanel key={decision.id} className="anim-pop w-full max-w-xl p-6 text-center sm:p-8">
         <p className="font-pixel text-[0.55rem] text-white/70 uppercase">
-          Decisión {currentStep + 1}/{emergency.decisions.length} · {decision.moment}
+          Decisión {decision.label ?? emergency.decisions.slice(0, currentStep + 1).filter((d) => !d.branch).length}/
+          {emergency.decisions.filter((d) => !d.branch).length} · {decision.moment}
         </p>
         <h2 className="mt-4 font-sans text-2xl font-bold leading-tight sm:text-3xl">{decision.prompt}</h2>
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -111,10 +115,10 @@ export function DecisionModal() {
             <PixelButton
               key={opt.id}
               variant="ghost"
-              className="h-full text-left normal-case hover:bg-uao-red"
+              className="h-full text-left normal-case hover:[--btn-bg:var(--color-btn-red)]"
               onClick={() => choose(opt)}
             >
-              <span className="mb-2 block text-signal-amber">Opción {i + 1}</span>
+              <span className="mb-2 block text-signal-amber">Opción {String.fromCharCode(65 + i)}</span>
               <span className="font-sans text-base font-semibold leading-snug">{opt.label}</span>
             </PixelButton>
           ))}
@@ -137,7 +141,7 @@ export function ChaosOverlay() {
 }
 
 export function FeedbackModal() {
-  const { feedbackMessage: fb, retry, goHome } = useGameStore()
+  const { feedbackMessage: fb, failedOption, retry, goHome } = useGameStore()
   const character = useCharacter()
   if (!fb) return null
   return (
@@ -146,24 +150,37 @@ export function FeedbackModal() {
         <div className="flex items-start gap-4">
           <CharacterSprite character={character} anim="idle" scale={3} className="shrink-0" />
           <div>
-            <p className="font-pixel text-[0.6rem] text-uao-red uppercase">Te equivocaste por…</p>
-            <h2 className="mt-2 text-2xl leading-tight font-bold">{fb.title.replace(/^Te equivocaste por /, '')}</h2>
+            <p className="font-pixel text-[0.6rem] text-uao-red uppercase">
+              {fb.title ? 'Te equivocaste por…' : 'Te equivocaste'}
+            </p>
+            {/* Con reflexión de un solo texto, el título es la opción que se eligió */}
+            <h2 className="mt-2 text-2xl leading-tight font-bold">
+              {fb.title ? fb.title.replace(/^Te equivocaste por /, '') : failedOption?.label}
+            </h2>
           </div>
         </div>
-        <dl className="mt-5 space-y-4 text-[1.05rem] leading-snug">
-          <div>
-            <dt className="font-pixel text-[0.55rem] text-carbon-700 uppercase">¿Qué pasó?</dt>
-            <dd className="mt-1">{fb.why}</dd>
+        {fb.reflection ? (
+          // Reflexión en un solo texto (ver feedback.reflection en emergencies.js)
+          <div className="mt-5 bg-uao-red/10 p-4 pixel-corners">
+            <p className="font-pixel text-[0.55rem] text-uao-wine uppercase">Reflexión</p>
+            <p className="mt-2 text-[1.1rem] leading-snug">{fb.reflection}</p>
           </div>
-          <div className="bg-uao-red/10 p-3 pixel-corners">
-            <dt className="font-pixel text-[0.55rem] text-uao-wine uppercase">Lo que aprendiste</dt>
-            <dd className="mt-1 font-bold">{fb.learned}</dd>
-          </div>
-          <div>
-            <dt className="font-pixel text-[0.55rem] text-carbon-700 uppercase">¿Cómo evitarlo?</dt>
-            <dd className="mt-1">{fb.avoid}</dd>
-          </div>
-        </dl>
+        ) : (
+          <dl className="mt-5 space-y-4 text-[1.05rem] leading-snug">
+            <div>
+              <dt className="font-pixel text-[0.55rem] text-carbon-700 uppercase">¿Qué pasó?</dt>
+              <dd className="mt-1">{fb.why}</dd>
+            </div>
+            <div className="bg-uao-red/10 p-3 pixel-corners">
+              <dt className="font-pixel text-[0.55rem] text-uao-wine uppercase">Lo que aprendiste</dt>
+              <dd className="mt-1 font-bold">{fb.learned}</dd>
+            </div>
+            <div>
+              <dt className="font-pixel text-[0.55rem] text-carbon-700 uppercase">¿Cómo evitarlo?</dt>
+              <dd className="mt-1">{fb.avoid}</dd>
+            </div>
+          </dl>
+        )}
         <div className="mt-6 flex items-center justify-center gap-3">
           <PixelButton onClick={retry}>Reintentar</PixelButton>
           <IconButton icon="home" label="Volver al inicio" onClick={goHome} solid />
@@ -184,14 +201,17 @@ export function VictoryModal() {
         <h2 className="font-pixel text-base leading-relaxed sm:text-lg">Lo lograste :)</h2>
         <p className="mt-2 text-[0.95rem] leading-snug text-white/90 sm:text-base">
           Llegaste al punto de encuentro durante el simulacro de <strong>{emergency.name.toLowerCase()}</strong>
-          {mistakes.length === 0 ? ' sin un solo error. ¡Brigadista en potencia!' : ` con ${mistakes.length} error(es) en el camino. ¡Ahora ya sabes qué no hacer!`}
+          {mistakes.length === 0
+            ? ' sin un solo error. ¡Brigadista en potencia!'
+            : ` con ${mistakes.length} error(es) en el camino. ¡Ahora ya sabes qué no hacer!`}
         </p>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <PixelButton className="!px-4 !py-3 !text-[0.6rem]" onClick={goToSelect}>
-            Otra emergencia
+          {/* Al terminar, lo siguiente es el mapa 3D (llega con la misma transición de la portada) */}
+          <PixelButton className="!px-4 !py-3 !text-[0.6rem]" onClick={goToMap}>
+            Visitar el mapa 3D
           </PixelButton>
-          <PixelButton variant="ghost" className="!px-4 !py-3 !text-[0.6rem]" onClick={goToMap}>
-            Ver mapa 3D
+          <PixelButton variant="ghost" className="!px-4 !py-3 !text-[0.6rem]" onClick={goToSelect}>
+            Otra emergencia
           </PixelButton>
           <IconButton icon="home" label="Volver al inicio" onClick={goHome} className="!size-10" />
         </div>
@@ -256,7 +276,7 @@ function TouchPad() {
           key={dir}
           type="button"
           aria-label={{ up: 'Arriba', down: 'Abajo', left: 'Izquierda', right: 'Derecha' }[dir]}
-          className={`glass-pixel pixel-corners grid size-14 touch-none place-items-center text-white active:bg-white/30 ${place}`}
+          className={`btn-pixel glass pixel-corners grid size-14 touch-none place-items-center p-0 ${place}`}
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId)
             press(dir, true)

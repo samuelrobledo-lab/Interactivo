@@ -3,7 +3,7 @@
 Experiencia web 3D (pixel art / low‑poly) sobre gestión del riesgo y evacuación en la Universidad Autónoma de Occidente.
 
 - **Portada:** escena 3D continua del campus que se recorre con scroll (amanecer → mapa → comenzar) mientras el cielo pasa del amanecer a un día soleado.
-- **Módulo 1 – Simulador 3D:** elige personaje y emergencia (Terremoto, Incendio o Fuga de gas); mueve al personaje libremente por los sótanos con **flechas / W A S D** (cruceta en pantallas táctiles) y responde las 3 decisiones al llegar a cada punto. Error → secuencia caótica + tarjeta reflexiva + **Reintentar**. Acierto → llegada al punto de encuentro.
+- **Módulo 1 – Simulador 3D:** elige personaje y emergencia (Terremoto, Incendio o Fuga de gas); mueve al personaje libremente por los sótanos con **flechas / W A S D** (cruceta en pantallas táctiles) y responde las preguntas al llegar a cada aro de luz amarillo. Cada emergencia tiene su propia ruta por los dos sótanos (con fuego o gas que no se puede tocar) hasta salir afuera de labs. Error → secuencia caótica + reflexión + **Reintentar**.
 - **Módulo 2 – Mapa 3D:** campus con pins interactivos; al hacer clic la cámara se enfoca (GSAP) y abre la ficha *¿Qué lugar es? / ¿Por qué es riesgoso? / ¿Cómo evacuar?*
 
 ## Ver en línea (GitHub Pages)

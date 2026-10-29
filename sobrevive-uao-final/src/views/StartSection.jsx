@@ -1,12 +1,13 @@
 import { useGameStore } from '../store/useGameStore'
 import { CHARACTERS } from '../data/characters'
-import { CharacterSprite, GlassPanel, PixelButton, SoundToggle, UaoMark } from '../components/ui/primitives'
+import { CharacterSprite, GlassPanel, PixelButton, ScrollHint, SoundToggle } from '../components/ui/primitives'
 
 /**
- * Sección 3 de la portada: invitación a iniciar la experiencia
+ * Sección 2 de la portada: invitación a iniciar la experiencia
  * (luego: elegir personaje → elegir emergencia → simulación).
  */
-export default function StartSection() {
+/** @param onNext  pasar a la siguiente sección (el mapa 3D) */
+export default function StartSection({ onNext }) {
   const goTo = useGameStore((s) => s.goTo)
   return (
     <section className="relative z-10 grid h-full place-items-center p-4">
@@ -26,7 +27,8 @@ export default function StartSection() {
           Iniciar la experiencia
         </PixelButton>
       </GlassPanel>
-      <UaoMark className="absolute bottom-6 left-1/2 -translate-x-1/2" />
+      {/* Después de la experiencia viene el mapa 3D */}
+      <ScrollHint label="Sigue bajando para ver el mapa 3D" onClick={onNext} />
     </section>
   )
 }

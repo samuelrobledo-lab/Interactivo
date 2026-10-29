@@ -4,8 +4,7 @@ import { useMemo } from 'react'
 /**
  * Texturas pixel art procedurales (canvas 2D → THREE.CanvasTexture).
  * Todas usan NearestFilter y sin mipmaps para conservar el pixelado.
- * Son placeholders: al integrar los GLB finales, `pixelateObject()` aplica
- * el mismo filtrado a las texturas del modelo.
+ * Se usan en los modelos FBX del campus y de los sótanos (que no traen materiales).
  */
 
 /** PRNG determinista para que las texturas sean estables entre renders. */
@@ -49,6 +48,27 @@ const RECIPES = {
     ctx.fillStyle = '#5c5b63'
     ctx.fillRect(0, 0, s, 1)
     ctx.fillRect(0, 0, 1, s)
+  }],
+
+  // Sótanos: piso de granito pulido (terrazo) en baldosas, gris cálido medio (no tan blanco)
+  terrazzo: [32, (ctx, s) => {
+    noise(ctx, s, '#a7a39a', 0.035, 13)
+    const r = rng(17)
+    const chips = ['#86837b', '#949188', '#bebab0', '#b6b2a8', '#8c897f'] // motas suaves, como el granito pulido
+    for (let i = 0; i < 50; i++) px(ctx, Math.floor(r() * s), Math.floor(r() * s), chips[i % chips.length])
+    // junta entre baldosas
+    px(ctx, 0, 0, '#8d8a83', s, 1)
+    px(ctx, 0, 0, '#8d8a83', 1, s)
+  }],
+
+  // Sótanos: muro pintado blanco hueso con zócalo gris de granito (abajo = nivel del piso)
+  whiteWall: [64, (ctx, s) => {
+    noise(ctx, s, '#e2ddd3', 0.02, 19)
+    const r = rng(23)
+    for (let i = 0; i < 6; i++) px(ctx, Math.floor(r() * s), Math.floor(r() * (s - 8)), '#d6d0c5', 1, 1) // marcas leves
+    const base = s - 3
+    for (let y = base; y < s; y++) for (let x = 0; x < s; x++) px(ctx, x, y, r() < 0.2 ? '#6f6c66' : r() < 0.4 ? '#9a978f' : '#86837c')
+    px(ctx, 0, base - 1, '#bdb7ac', s, 1) // borde del zócalo
   }],
 
   asphalt: [32, (ctx, s) => {
@@ -130,6 +150,110 @@ const RECIPES = {
     px(ctx, 3, 2, '#b8bec8', 26, 30)
     for (let y = 2; y < 32; y += 3) px(ctx, 3, y, '#a3a9b3', 26, 1)
     px(ctx, 15, 2, '#5d626b', 2, 30)
+  }],
+
+  // Escaleras y salida: ladrillo naranja en aparejo de soga (como el campus), junta clara
+  brickRed: [32, (ctx, s) => {
+    px(ctx, 0, 0, '#d8b39b', s, s)
+    const r = rng(37)
+    const tones = ['#c8613f', '#d26a45', '#bf5838', '#d57653', '#b85234', '#cc6a4a']
+    for (let row = 0; row < s / 4; row++) {
+      const off = row % 2 ? 4 : 0
+      for (let x = -off; x < s; x += 8) {
+        const tone = tones[Math.floor(r() * tones.length)]
+        for (let k = 0; k < 7; k++) px(ctx, (x + k + s) % s, row * 4, tone, 1, 3)
+      }
+    }
+  }],
+
+  // Peldaños: baldosa de terracota brillante con junta clara
+  tileTread: [32, (ctx, s) => {
+    px(ctx, 0, 0, '#d9a68b', s, s)
+    const r = rng(41)
+    for (let y = 0; y < s; y += 8)
+      for (let x = 0; x < s; x += 4) {
+        const tone = shade('#c85a32', (r() - 0.5) * 0.08)
+        px(ctx, x, y, tone, 3, 7)
+        px(ctx, x, y, shade(tone, 0.08), 3, 1) // brillo
+      }
+  }],
+
+  // Descansos: ladrillo en espiga (rojo oscuro) con junta
+  herringbone: [32, (ctx, s) => {
+    const r = rng(43)
+    for (let y = 0; y < s; y++)
+      for (let x = 0; x < s; x++) {
+        const k = ((x >> 2) + (y >> 2)) & 1
+        const mortar = k ? y % 4 === 3 : x % 4 === 3
+        px(ctx, x, y, mortar ? '#c58a70' : shade('#9c3a24', (r() - 0.5) * 0.06))
+      }
+  }],
+
+  // Ficha "Escaleras": piso de ladrillo en espiga como la foto (ladrillos 2:1 cruzados, junta clara)
+  brickFloor: [32, (ctx, s) => {
+    const W = 4 // ancho de un ladrillo (largo = 2W); el patrón se repite con (W, W) y (2W, −2W)
+    px(ctx, 0, 0, '#b07a62', s, s) // junta
+    const r = rng(61)
+    const brick = (x, y, w, h) => {
+      const tone = shade('#c4593a', (r() - 0.5) * 0.1)
+      for (const dx of [0, -s, s]) for (const dy of [0, -s, s]) px(ctx, x + dx, y + dy, tone, w - 1, h - 1)
+    }
+    for (let n = 0; n < s / W; n++)
+      for (let m = -2; m < 2; m++) {
+        const x = (((n * W + m * 2 * W) % s) + s) % s
+        const y = (((n * W - m * 2 * W) % s) + s) % s
+        brick(x, y, 2 * W, W) // acostado
+        brick(x, y + W, W, 2 * W) // parado
+      }
+  }],
+
+  // Vidrio de la salida: jardín y luz de afuera
+  outsideView: [32, (ctx, s) => {
+    px(ctx, 0, 0, '#eef4e6', s, s)
+    const r = rng(47)
+    const greens = ['#7fb466', '#5f9a50', '#9cc77a', '#4f8746']
+    for (let i = 0; i < 70; i++) {
+      const x = Math.floor(r() * s)
+      const y = 10 + Math.floor(r() * (s - 10))
+      px(ctx, x, y, greens[i % greens.length], 2 + Math.floor(r() * 3), 2 + Math.floor(r() * 3))
+    }
+    px(ctx, 0, s - 3, '#c9c3b5', s, 3) // andén afuera
+  }],
+
+  // Sótano 1: puertas de ascensor en acero inoxidable cepillado (dos hojas)
+  steelDoor: [32, (ctx, s) => {
+    const r = rng(29)
+    for (let x = 0; x < s; x++) {
+      const streak = r() < 0.25 ? 0.06 : r() < 0.25 ? -0.05 : 0
+      for (let y = 0; y < s; y++) px(ctx, x, y, shade('#b7bbc0', streak + (r() - 0.5) * 0.03))
+    }
+    px(ctx, 9, 4, '#e4e7ea', 3, 18) // brillo
+    px(ctx, 22, 8, '#dde0e4', 2, 14)
+    px(ctx, 15, 0, '#6f7378', 2, s) // unión de las dos hojas
+    px(ctx, 0, 0, '#8d9196', 1, s)
+    px(ctx, s - 1, 0, '#8d9196', 1, s)
+  }],
+
+  // Sótano 1: letrero amarillo "Ascensor" con flechas y pictograma
+  elevatorSign: [32, (ctx, s) => {
+    px(ctx, 0, 0, '#f1cd3c', s, s)
+    px(ctx, 0, 0, '#c9a51f', s, 1)
+    px(ctx, 0, s - 1, '#c9a51f', s, 1)
+    const k = '#2b2a26'
+    // texto (rayitas)
+    px(ctx, 3, 3, k, 9, 2)
+    // flechas ↓↑
+    px(ctx, 20, 8, k, 1, 7)
+    px(ctx, 19, 13, k, 3, 1)
+    px(ctx, 25, 8, k, 1, 7)
+    px(ctx, 24, 9, k, 3, 1)
+    // pictograma: cabina con tres personas
+    px(ctx, 18, 17, k, 11, 12)
+    px(ctx, 19, 18, '#f1cd3c', 9, 10)
+    for (const x of [20, 23, 26]) {
+      px(ctx, x, 20, k, 1, 1)
+      px(ctx, x, 22, k, 1, 5)
+    }
   }],
 
   exitSign: [32, (ctx, s) => {
@@ -263,23 +387,4 @@ export function makePixelTexture(name, repeatX = 1, repeatY = repeatX) {
 /** Hook memoizado para usar en componentes R3F. */
 export function usePixelTexture(name, repeatX = 1, repeatY = repeatX) {
   return useMemo(() => makePixelTexture(name, repeatX, repeatY), [name, repeatX, repeatY])
-}
-
-/** Recorre un modelo GLTF y fuerza NearestFilter en todas sus texturas (para assets finales). */
-export function pixelateObject(object3d) {
-  object3d.traverse((o) => {
-    if (!o.isMesh) return
-    const mats = Array.isArray(o.material) ? o.material : [o.material]
-    mats.forEach((m) => {
-      ;['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap'].forEach((k) => {
-        if (m[k]) {
-          m[k].magFilter = THREE.NearestFilter
-          m[k].minFilter = THREE.LinearMipmapLinearFilter
-          m[k].generateMipmaps = true
-          m[k].needsUpdate = true
-        }
-      })
-    })
-  })
-  return object3d
 }

@@ -18,13 +18,3 @@ export const TOAST_DURATION_MS = 2600
 
 /** Velocidad de caminata del avatar (unidades/seg). */
 export const WALK_SPEED = 3.4
-
-/**
- * Rutas a modelos .glb/.gltf finales (colócalos en /public/models).
- * (El campus ya usa el modelo definitivo: src/assets/models/mapa-uao.fbx → UaoCampus.jsx)
- * Mientras sean `null` se usa el placeholder procedural pixel art.
- * Ej: basement: '/models/sotanos-uao.glb'
- */
-export const MODELS = {
-  basement: null,
-}

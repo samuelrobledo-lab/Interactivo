@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useGameStore } from '../store/useGameStore'
-import { landing, setLanding } from '../store/landingProgress'
+import { SECTION, landing, setLanding } from '../store/landingProgress'
 import Home from './Home'
 import MapView from './MapView'
 import StartSection from './StartSection'
 
 /**
  * Portada en 3 secciones que se recorren con scroll:
- *   0 · Intro (amanecer + título)   1 · Mapa 3D interactivo   2 · Comenzar la experiencia
+ *   0 · Intro (amanecer + título)   1 · Comenzar la experiencia   2 · Mapa 3D interactivo
  *
  * Transición progresiva hacia abajo: la posición (`pos`, de 0 a 2) sigue el movimiento del usuario
  * —rueda del mouse, touchpad, flechas del teclado o deslizar en pantallas táctiles—.
@@ -16,19 +16,30 @@ import StartSection from './StartSection'
  * Al soltar, se acomoda en la sección más cercana.
  */
 
+// en el orden de SECTION
 const SECTIONS = [
   { id: 'intro', label: 'Inicio' },
+  { id: 'start', label: 'Experiencia' },
   { id: 'map', label: 'Mapa 3D' },
-  { id: 'start', label: 'Comenzar' },
 ]
 const LAST = SECTIONS.length - 1
-const WHEEL_PER_SECTION = 700 // px de scroll (rueda/touchpad) para pasar una sección completa
+const WHEEL_PER_SECTION = 450 // px de scroll (rueda/touchpad) para pasar una sección completa
 const SNAP_DELAY = 160 // ms sin movimiento antes de acomodarse
+const SNAP_THRESHOLD = 0.12 // fracción de sección a partir de la cual se completa el paso al soltar
+/**
+ * Ruedas de mouse en Mac (y el Magic Mouse) mandan movimientos muy pequeños (4–10 px por "clic", contra
+ * ~100 px en Windows): un evento aislado cuenta como mínimo MIN_NOTCH px. Los touchpads mandan muchos
+ * eventos seguidos (cada ~16 ms) y siguen el gesto tal cual.
+ */
+const MIN_NOTCH = 60
+const MAX_EVENT = 150 // tope por evento (algunos mouses mandan saltos enormes)
+const ISOLATED_GAP = 60 // ms desde el evento anterior para considerarlo un "clic" de rueda
+const GESTURE_GAP = 220 // ms sin eventos = empieza un gesto nuevo (la inercia del anterior ya terminó)
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2) // suave al salir y al llegar
 
 function SectionContent({ index, onNext }) {
-  if (index === 1) return <MapView onNext={onNext} />
-  return index === 0 ? <Home onNext={onNext} /> : <StartSection />
+  if (index === SECTION.map) return <MapView />
+  return index === SECTION.intro ? <Home onNext={onNext} /> : <StartSection onNext={onNext} />
 }
 
 const visibleAt = (pos) => SECTIONS.map((_, i) => i).filter((i) => Math.abs(i - pos) < 0.999)
@@ -56,7 +67,7 @@ export default function Landing() {
       el.style.transform = `translate3d(0, ${d * 100}%, 0)`
       el.style.zIndex = String(10 - Math.round(a * 5))
       // el mapa deja pasar el mouse al canvas 3D (sus botones activan sus propios eventos)
-      el.style.pointerEvents = a < 0.5 && i !== '1' ? 'auto' : 'none'
+      el.style.pointerEvents = a < 0.5 && Number(i) !== SECTION.map ? 'auto' : 'none'
       el.inert = a >= 0.5
     })
   }, [])
@@ -98,27 +109,45 @@ export default function Landing() {
     [setPos, setSection],
   )
 
-  /** Al detenerse: si avanzó más de un cuarto de sección, completa el paso; si no, regresa. */
+  // Tras completar un paso con la rueda se ignora la inercia del mismo gesto (si no, saltaría dos secciones)
+  const wheelLock = useRef(false)
+
+  /** Completa el paso hacia `target` (si cambia de sección, bloquea la inercia del gesto). */
+  const finishStep = useCallback(
+    (target) => {
+      if (target !== useGameStore.getState().landingSection) wheelLock.current = true
+      animateTo(target, 450)
+    },
+    [animateTo],
+  )
+
+  /** Al detenerse: si avanzó más de SNAP_THRESHOLD, completa el paso; si no, regresa. */
   const scheduleSnap = useCallback(() => {
     clearTimeout(snapTimer.current)
     snapTimer.current = setTimeout(() => {
       const from = useGameStore.getState().landingSection
       const delta = pos.current - from
-      const target = Math.abs(delta) > 0.25 ? from + Math.sign(delta) * Math.max(1, Math.round(Math.abs(delta))) : from
-      animateTo(target, 450)
+      finishStep(Math.abs(delta) > SNAP_THRESHOLD ? from + Math.sign(delta) : from)
     }, SNAP_DELAY)
-  }, [animateTo])
+  }, [finishStep])
 
-  /** Movimiento directo del usuario (sigue el gesto en tiempo real). */
+  /** Movimiento directo del usuario (sigue el gesto en tiempo real, como mucho una sección por gesto). */
   const nudge = useCallback(
     (delta) => {
       cancelAnimationFrame(tween.current)
       landing.settled = -1
-      setPos(pos.current + delta)
-      scheduleSnap()
+      const from = useGameStore.getState().landingSection
+      const next = Math.max(from - 1, Math.min(from + 1, pos.current + delta))
+      setPos(next)
+      // si ya llegó a la sección vecina, termina ahí mismo (no espera a que se detenga la inercia)
+      if (Math.abs(next - from) >= 0.999 && next >= 0 && next <= LAST) {
+        clearTimeout(snapTimer.current)
+        finishStep(Math.round(next))
+      } else scheduleSnap()
     },
-    [setPos, scheduleSnap],
+    [setPos, scheduleSnap, finishStep],
   )
+
 
 
   // Estilos iniciales y en cada (des)montaje de capas
@@ -135,9 +164,18 @@ export default function Landing() {
 
   // Entradas
   useEffect(() => {
+    let lastWheel = 0
     const onWheel = (e) => {
-      if (e.target.closest?.('[role="dialog"], aside')) return // fichas y guías tienen su propio scroll
-      const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY
+      if (e.ctrlKey || e.target.closest?.('[role="dialog"], aside')) return // pellizco / fichas y guías con su propio scroll
+      const now = performance.now()
+      const gap = now - lastWheel
+      lastWheel = now
+      if (gap > GESTURE_GAP) wheelLock.current = false
+      if (wheelLock.current) return
+      let px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY
+      if (!px) return
+      if (gap > ISOLATED_GAP) px = Math.sign(px) * Math.max(Math.abs(px), MIN_NOTCH) // "clic" de rueda
+      px = Math.max(-MAX_EVENT, Math.min(MAX_EVENT, px))
       nudge(px / WHEEL_PER_SECTION)
     }
     const onKey = (e) => {
@@ -147,7 +185,7 @@ export default function Landing() {
     let touch = null
     const onTouchStart = (e) => {
       // sobre el mapa 3D el dedo gira la cámara: no se usa para cambiar de sección
-      const onMap = e.target.closest?.('canvas') && Math.round(pos.current) === 1
+      const onMap = e.target.closest?.('canvas') && Math.round(pos.current) === SECTION.map
       touch = onMap ? null : e.touches[0].clientY
       if (touch != null) cancelAnimationFrame(tween.current)
     }
@@ -203,7 +241,7 @@ export default function Landing() {
             aria-current={settled === i ? 'step' : undefined}
             title={s.label}
             onClick={() => animateTo(i, 800)}
-            className={`size-3 cursor-pointer rounded-full ring-2 ring-white/70 transition ${settled === i ? 'scale-125 bg-uao-red' : 'bg-white/30 hover:bg-white/70'}`}
+            className={`pixel-circle-sm size-3 cursor-pointer transition ${settled === i ? 'scale-125 bg-btn-red' : 'bg-white/55 hover:bg-white/80'}`}
           />
         ))}
       </nav>

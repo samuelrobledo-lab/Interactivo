@@ -38,8 +38,8 @@ export default function CharacterSelect() {
                 onMouseLeave={() => setHovered(null)}
                 onFocus={() => setHovered(c.id)}
                 onBlur={() => setHovered(null)}
-                className={`glass-pixel pixel-corners pixel-corners-lg flex cursor-pointer flex-col items-center gap-3 px-2 pt-6 pb-4 transition outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-signal-amber sm:px-4 ${
-                  selected ? 'bg-uao-red/35 ring-4 ring-inset ring-uao-red' : 'hover:bg-white/10'
+                className={`glass-pixel pixel-corners flex cursor-pointer flex-col items-center gap-3 px-2 pt-6 pb-4 transition outline-none focus-visible:[--pixel-ring:var(--color-signal-amber)] sm:px-4 ${
+                  selected ? 'bg-btn-red/35 [--pixel-ring:var(--color-btn-red)]' : 'hover:bg-white/10'
                 }`}
               >
                 <span className="grid h-28 place-items-end sm:h-40">

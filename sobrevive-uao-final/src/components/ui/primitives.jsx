@@ -1,6 +1,7 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { sound } from '../../audio/sound'
-import { ICONS, drawCampusVignette } from '../../utils/sprites'
+import { ICONS, drawCampusVignette, drawUaoVignette } from '../../utils/sprites'
+import { campusSnapshot } from '../../utils/campusSnapshot'
 import { frameAt, getCharacter } from '../../data/characters'
 import { useGameStore } from '../../store/useGameStore'
 
@@ -52,14 +53,14 @@ export function PixelIcon({ name, size = 18, color = 'currentColor', className =
   )
 }
 
-/** Botón circular de navegación (home / back / retry) como en el wireframe. */
+/** Botón circular de icono (home / back / retry…): mismo sistema que PixelButton, en círculo pixel. */
 export function IconButton({ icon, label, solid = false, className = '', ...rest }) {
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
-      className={`grid size-12 cursor-pointer place-items-center rounded-full ${solid ? 'bg-carbon-800' : 'bg-white/15'} text-white shadow-[inset_0_-4px_0_rgb(0_0_0/0.3),inset_0_2px_0_rgb(255_255_255/0.25)] backdrop-blur-md transition hover:bg-uao-red focus-visible:outline-3 focus-visible:outline-signal-amber active:translate-y-0.5 ${className}`}
+      className={`btn-pixel glass btn-icon pixel-circle ${solid ? 'solid' : ''} ${className}`}
       {...rest}
     >
       <PixelIcon name={icon} size={18} />
@@ -137,6 +138,42 @@ export function CampusVignette({ variant = 'base', animate = false, className = 
     return () => clearInterval(id)
   }, [variant, animate])
   return <canvas ref={ref} width={48} height={36} className={`pixelated ${className}`} aria-hidden="true" />
+}
+
+/** Viñeta con la foto pixel del campus UAO (modelo 3D) y la emergencia encima. */
+export function UaoVignette({ variant = 'base', animate = false, className = '' }) {
+  const ref = useRef(null)
+  const [photo, setPhoto] = useState(null)
+  // La foto se toma cuando el campus 3D ya cargó (si se entra antes, p. ej. al volver de la experiencia, espera)
+  useEffect(() => {
+    let id
+    const tryShot = () => {
+      const shot = campusSnapshot()
+      if (shot) setPhoto(shot)
+      else id = setTimeout(tryShot, 150)
+    }
+    id = setTimeout(tryShot, 50)
+    return () => clearTimeout(id)
+  }, [])
+  useEffect(() => {
+    if (!photo) return
+    const ctx = ref.current.getContext('2d')
+    let frame = 0
+    drawUaoVignette(ctx, photo, variant, frame)
+    if (!animate) return
+    const id = setInterval(() => drawUaoVignette(ctx, photo, variant, ++frame), 140)
+    return () => clearInterval(id)
+  }, [photo, variant, animate])
+  // mientras carga: el mismo círculo vacío (nunca el dibujo genérico)
+  return (
+    <canvas
+      ref={ref}
+      width={photo?.width ?? 96}
+      height={photo?.height ?? 96}
+      className={`pixelated ${className}`}
+      aria-hidden="true"
+    />
+  )
 }
 
 /** Wordmark temporal sobre placa liquid glass. Reemplazar por el logo oficial (SVG) en /public/images. */
